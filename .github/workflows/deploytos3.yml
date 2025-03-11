@@ -1,1 +1,38 @@
+name: Deploy to S3 and CloudFront
 
+on:
+  push:
+    branches:
+      - main  # o master, según tu rama principal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Cambia esto a tu región de AWS
+
+      - name: Install dependencies
+        run: npm install  # O yarn install, según tu gestor de paquetes
+
+      - name: Build
+        run: npm run build  # O el comando que uses para construir tu proyecto
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync ./dist s3://${{ secrets.S3_BUCKET }} --delete
+        # Asegúrate de que ./dist sea el directorio donde se genera tu build
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
