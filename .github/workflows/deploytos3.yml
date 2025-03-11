@@ -3,7 +3,7 @@ name: Deploy to S3 and CloudFront
 on:
   push:
     branches:
-      - main  # o master, según tu rama principal
+      - main
 
 jobs:
   deploy:
@@ -18,12 +18,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Cambia esto a tu región de AWS
+          aws-region: us-east-1
 
-      # Primero, configuramos la política del bucket para acceso público
+      # Crear y aplicar la política del bucket usando un archivo temporal
       - name: Make S3 bucket public
         run: |
-          aws s3api put-bucket-policy --bucket ${{ secrets.S3_BUCKET }} --policy '{
+          echo '{
             "Version": "2012-10-17",
             "Statement": [
               {
@@ -34,7 +34,8 @@ jobs:
                 "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET }}/*"
               }
             ]
-          }'
+          }' > bucket-policy.json
+          aws s3api put-bucket-policy --bucket ${{ secrets.S3_BUCKET }} --policy file://bucket-policy.json
 
       - name: Deploy to S3
         run: |
@@ -45,39 +46,8 @@ jobs:
             --exclude ".github/*" \
             --exclude "README.md" \
             --exclude ".gitignore" \
-            --acl public-read \
-            --cache-control "max-age=86400" \
-            --metadata-directive REPLACE \
-            --content-type "text/html" \
-            --exclude "*" \
-            --include "*.html" \
-            --include "*.css" \
-            --include "*.js" \
-            --include "*.jpg" \
-            --include "*.jpeg" \
-            --include "*.png" \
-            --include "*.gif" \
-            --include "*.ico" \
-            --include "*.svg" \
-            --include "*.txt"
-
-      - name: Set content type for specific files
-        run: |
-          # Configurar content-type para CSS
-          aws s3 cp s3://${{ secrets.S3_BUCKET }} s3://${{ secrets.S3_BUCKET }} \
-            --exclude "*" --include "*.css" \
-            --content-type "text/css" \
-            --metadata-directive REPLACE \
-            --acl public-read \
-            --recursive
-
-          # Configurar content-type para JavaScript
-          aws s3 cp s3://${{ secrets.S3_BUCKET }} s3://${{ secrets.S3_BUCKET }} \
-            --exclude "*" --include "*.js" \
-            --content-type "application/javascript" \
-            --metadata-directive REPLACE \
-            --acl public-read \
-            --recursive
+            --exclude "bucket-policy.json" \
+            --acl public-read
 
       - name: Invalidate CloudFront Cache
         run: |
