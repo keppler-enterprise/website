@@ -20,15 +20,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1  # Cambia esto a tu región de AWS
 
-      # Eliminamos los pasos de npm install y build si no son necesarios
-
       - name: Deploy to S3
         run: |
-          aws s3 sync . s3://${{ secrets.S3_BUCKET }} --delete --exclude ".git/*" --exclude ".github/*"
-        # Ahora sincronizamos desde la raíz del proyecto, excluyendo archivos innecesarios
+          echo "Deploying to bucket: ${{ secrets.AWS_BUCKET_NAME }}"
+          aws s3 sync . s3://${{ secrets.AWS_BUCKET_NAME }} \
+            --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude "README.md" \
+            --exclude ".gitignore"
 
       - name: Invalidate CloudFront Cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_ID }} \
             --paths "/*"
