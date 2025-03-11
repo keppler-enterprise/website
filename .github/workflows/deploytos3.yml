@@ -20,37 +20,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # Crear y aplicar la política del bucket usando un archivo temporal
-      - name: Make S3 bucket public
+      - name: Deploy to S3 with public access
         run: |
-          echo '{
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "PublicReadGetObject",
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET }}/*"
-              }
-            ]
-          }' > bucket-policy.json
-          aws s3api put-bucket-policy --bucket ${{ secrets.S3_BUCKET }} --policy file://bucket-policy.json
-
-      - name: Deploy to S3
-        run: |
-          echo "Deploying to bucket: ${{ secrets.S3_BUCKET }}"
-          aws s3 sync . s3://${{ secrets.S3_BUCKET }} \
+          aws s3 sync . s3://${{ secrets.AWS_BUCKET_NAME }} \
             --delete \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "README.md" \
             --exclude ".gitignore" \
-            --exclude "bucket-policy.json" \
             --acl public-read
 
+      # Configurar el bucket como público usando la consola web de AWS
+      # O usar el siguiente comando si es necesario:
+      - name: Configure bucket policy
+        run: |
+          aws s3api put-public-access-block \
+            --bucket ${{ secrets.S3_BUCKET }} \
+            --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
       - name: Invalidate CloudFront Cache
+        if: success()
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_ID }} \
             --paths "/*"
