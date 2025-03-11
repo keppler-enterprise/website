@@ -20,14 +20,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # Primero, configuramos el acceso público al bucket
-      - name: Configure bucket public access
-        run: |
-          aws s3api put-public-access-block \
-            --bucket ${{ secrets.S3_BUCKET }} \
-            --public-access-block-configuration '{"BlockPublicAcls":false,"IgnorePublicAcls":false,"BlockPublicPolicy":false,"RestrictPublicBuckets":false}'
-
-      # Luego, sincronizamos los archivos con acceso público
+      # Sincronizar archivos con acceso público
       - name: Deploy to S3 with public access
         run: |
           aws s3 sync . s3://${{ secrets.AWS_BUCKET_NAME }} \
@@ -38,7 +31,7 @@ jobs:
             --exclude ".gitignore" \
             --acl public-read
 
-      # Finalmente, invalidamos la caché de CloudFront
+      # Invalidar la caché de CloudFront
       - name: Invalidate CloudFront Cache
         if: success()
         run: |
