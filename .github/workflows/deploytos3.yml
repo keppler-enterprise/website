@@ -20,16 +20,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1  # Cambia esto a tu región de AWS
 
-      - name: Install dependencies
-        run: npm install  # O yarn install, según tu gestor de paquetes
-
-      - name: Build
-        run: npm run build  # O el comando que uses para construir tu proyecto
+      # Eliminamos los pasos de npm install y build si no son necesarios
 
       - name: Deploy to S3
         run: |
-          aws s3 sync ./dist s3://${{ secrets.S3_BUCKET }} --delete
-        # Asegúrate de que ./dist sea el directorio donde se genera tu build
+          aws s3 sync . s3://${{ secrets.S3_BUCKET }} --delete --exclude ".git/*" --exclude ".github/*"
+        # Ahora sincronizamos desde la raíz del proyecto, excluyendo archivos innecesarios
 
       - name: Invalidate CloudFront Cache
         run: |
